@@ -6,7 +6,9 @@ import requests
 from tqdm import *
 from pathlib import Path
 import sys
-
+import holidays
+from trading_calendars import get_calendar
+import pandas as pd
 
 class main:
     
@@ -64,21 +66,20 @@ class main:
             
             for obj in value.split(","):
                     
-                    d0 = date(2007, 9, 15) # Static definition of the date
+                    d0 = date(2001, 11, 16) # Static definition of the date
                     d1 = date(int(obj.split("-")[0]), int(obj.split("-")[1]), int(obj.split("-")[2]))
                     
-                    if(d1.weekday()<5):
-                        delta = d1 - d0
-                        self.download_data(self.link_configs[key]['base'], delta.days, self.link_configs[key]['filename'], obj, key)
+                    if(d1.weekday()<5 and str(d1) not in self.sg_holidays and d1 not in self.sg_ex_cal):
+                        self.download_data(self.link_configs[key]['base'], self.get_working_days(d0,d1), self.link_configs[key]['filename'], obj, key)
                     else:
-                        self.logger.info("It's a weekend skipping")
+                        self.logger.info("{} is a weekend or public holiday, skipping..".format(str(d1)))
         
         self.logger.info("Step 3 : Download day wise data ends")
     
     def download_data(self, base, days, filename, date, key):
-        url = base+str(days)+"/"+filename
-        name = "downloads/"+key+"/"+date+"_WEBPXTICK_DT.zip"
-
+        url = base + str(days) + "/" + filename
+        name = self.config['download_folder']['location']+ key + "/" + date + "_" +filename
+        self.logger.info("Downloading data for {} and the url is {}".format(date,url))
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
             with open(name, 'wb') as f:
@@ -88,6 +89,18 @@ class main:
                         f.write(chunk)
                         pbar.update(len(chunk))
     
+    def get_working_days(self, d0, d1):
+        cnt = 0 
+        
+        #while(cnt != 4656):
+        while(d1 != d0):
+            #d1 = d1 - timedelta(days=1)
+            d0 = d0 + timedelta(days=1)
+            if(d0.weekday()<5 and str(d0) not in self.sg_holidays and d0 not in self.sg_ex_cal):
+                cnt = cnt + 1
+
+        return cnt
+
     def __init__(self):
         p = Path('logs')
         p.mkdir(exist_ok=True)
@@ -105,15 +118,22 @@ class main:
         # Readint the config file 
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
+        self.sg_holidays = holidays.CountryHoliday('SG')
+        self.sg_ex_cal = get_calendar('XSES').precomputed_holidays
+        # Mapping Number to date
+        for i in reversed(range(4660)):
+            df = pd.read_csv('https://links.sgx.com/1.0.0/derivatives-historical/{}/TC.txt'.format(i), sep='\t')
+            print(df['Business_Date'].unique())
+
         #logger.info("Hello")
         # Read the config file
         # Set logging parameters override
         # Start downloading day-wise files
         # Start downloading historic files
         # End
-
+        # Adhoc
     
 sgx_scribe = main()
 sgx_scribe.config_basic_checks()
 sgx_scribe.read_config()
-sgx_scribe.download_day_wise()
+#sgx_scribe.download_day_wise()
