@@ -221,7 +221,7 @@ class main:
     def __init__(self):
         # print("There are {} CPUs on this machine ".format(cpu_count()))
         # Defining internal variables
-        self._INTERNAL_RANGE_START = 3950
+        self._INTERNAL_RANGE_START = 4660
         
         self._INTERNAL_RANGE_END = 4663
 
