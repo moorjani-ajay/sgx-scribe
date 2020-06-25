@@ -48,7 +48,6 @@ class main:
         self.fileLogger.info("Download day wise data starts")
         
         files = []
-        # r=root, d=directories, f = files
         for r, d, f in os.walk("downloads"):
             for file in f:
                     files.append(os.path.join(r, file))
@@ -60,8 +59,15 @@ class main:
             webpxtick_download_df = self.mapping_df_webpxtick_dt[self.mapping_df_webpxtick_dt['date']==int(value)]
             # Check if files are already available
             # Logic for TC
-            if tc_download_df.empty:
-                self.fileLogger.info("[TC] Mapping not found for {} ,let's fetch it from the site".format(value))
+            if tc_download_df.empty: 
+                 # and historicflag is False:
+                self.fileLogger.info("[TC] Mapping not found for {} ,let's fetch it from the site [FEATURE] ".format(value))
+                # if int(value) > max(self._MAX_TC['date']):
+                #     self._INTERNAL_RANGE_START = max(self._MAX_TC['date']) 
+                #     self._INTERNAL_RANGE_END = max(self._MAX_TC['date']) + 10
+                #     self._mapping_func()
+                #     self.download_day_wise(False)
+                # print("{} {} ".format(min(self._MAX_WEBPX['date']),value))
             else:
                 for i in tc_download_df['id']:
                     if "downloads/TC/{}_TC.txt".format(i) not in files:
@@ -71,6 +77,7 @@ class main:
             
             # Logic for WEBPXTICK_DT
             if webpxtick_download_df.empty:
+                #print("{} {} {}".format(value in self.sg_holidays, value, value in self.sg_ex_cal ))
                 self.fileLogger.info("[WEBPXTICK_DT] Mapping not found for {} ,let's fetch it from the site".format(value))
             else:
                 for i in webpxtick_download_df['id']:
@@ -83,7 +90,7 @@ class main:
         results = pool.map(self.download_data, list(dict.fromkeys(urls)))
         pool.close()
         pool.join()
-        self.fileLogger.info("OK, Download day wise data ends")
+        self.fileLogger.info("OK, Downloading ended")
     
     def download_history(self):
         self.historic_days=[]
@@ -150,11 +157,74 @@ class main:
             self.fileLogger.warning("some checks in _config_basic_checks failed : -> {}".format(e))
 
         self.fileLogger.info("Checks on config file ends")
+    
+    def _mapping_func(self):
+        self.fileLogger.info("Mapping File Number to date") 
+        self.mapping_file_tc = ".internal/mapping_tc.csv"
+        self.mapping_file_webpxtick_dt = ".internal/mapping_webpxtick_dt.csv"
+        column_names = ["id", "date"]
+
+        self.fileLogger.info("Loading existing mapping")
+        if(os.stat(self.mapping_file_tc).st_size == 0):
+            self.mapping_df_tc = pd.DataFrame(columns = column_names)
+        else:
+            data = pd.read_csv(self.mapping_file_tc) 
+            self.mapping_df_tc = pd.DataFrame(data, columns = column_names)
+        if(os.stat(self.mapping_file_webpxtick_dt).st_size == 0):
+            self.mapping_df_webpxtick_dt = pd.DataFrame(columns = column_names)
+        else:
+            data = pd.read_csv(self.mapping_file_webpxtick_dt) 
+            self.mapping_df_webpxtick_dt = pd.DataFrame(data, columns = column_names)
         
+        self.fileLogger.info("OK, Existing mapping loaded")
+        self.fileLogger.info("Checking for new data")
+        
+        #Checking for future data 
+        self._MIN_TC = self.mapping_df_tc[self.mapping_df_tc['id']==self.mapping_df_tc['id'].min()]
+        self._MAX_TC = self.mapping_df_tc[self.mapping_df_tc['id']==self.mapping_df_tc['id'].max()]
+        self._MIN_WEBPX = self.mapping_df_webpxtick_dt[self.mapping_df_webpxtick_dt['id']==self.mapping_df_webpxtick_dt['id'].min()]
+        self._MAX_WEBPX = self.mapping_df_webpxtick_dt[self.mapping_df_webpxtick_dt['id']==self.mapping_df_webpxtick_dt['id'].max()]
+        
+        self._INTERNAL_RANGE_START = max(self._MAX_WEBPX['id'])
+        self._INTERNAL_RANGE_END = max(self._MAX_WEBPX['id']) + 3
+
+        for i in reversed(range(self._INTERNAL_RANGE_START,self._INTERNAL_RANGE_END)):
+            if i not in self.mapping_df_tc['id'].values:
+                try:
+                    df = pd.read_csv('https://links.sgx.com/1.0.0/derivatives-historical/{}/TC.txt'.format(i), sep='\t')
+                    self._store_in_array(df['Business_Date'].unique(), i , "tc" )
+                except Exception as e:
+                    self.fileLogger.info("Cannot map [ignore] {}".format(e))
+
+        self.fileLogger.info("Saving TC mapping back to disc")
+        
+        self.mapping_df_tc.drop_duplicates(keep = False, inplace = True)
+        self.mapping_df_tc.to_csv(self.mapping_file_tc)
+        
+        self.fileLogger.info("OK, TC mapping completed")
+
+        for i in reversed(range(self._INTERNAL_RANGE_START,self._INTERNAL_RANGE_END)):
+            if i not in self.mapping_df_webpxtick_dt['id'].values:
+                try:               
+                    df = pd.read_csv('https://links.sgx.com/1.0.0/derivatives-historical/{}/WEBPXTICK_DT.zip'.format(i), sep=',')
+                    self._store_in_array(df['Trade_Date'].unique(), i , "webpx")
+                except Exception as e:
+                    self.fileLogger.info("Cannot map [ignore] {}".format(e))
+        
+        self.fileLogger.info("Saving WEBPXTICK_DT mapping back to disc")
+        
+        self.mapping_df_webpxtick_dt.drop_duplicates(keep = False, inplace = True)
+        self.mapping_df_webpxtick_dt.to_csv(self.mapping_file_webpxtick_dt)
+        
+        self.fileLogger.info("OK, WEBPXTICK_DT mapping completed")
+
+        self.logger.info("Program initiated, downloading starts...")
+
+
     def __init__(self):
-        print("There are {} CPUs on this machine ".format(cpu_count()))
+        # print("There are {} CPUs on this machine ".format(cpu_count()))
         # Defining internal variables
-        self._INTERNAL_RANGE_START = 4240 
+        self._INTERNAL_RANGE_START = 4450
         #4238 has probs
         self._INTERNAL_RANGE_END = 4240
         
@@ -178,56 +248,14 @@ class main:
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
         self.fileLogger.info("OK, Config file present")
-
-        self.fileLogger.info("Mapping File Number to date") 
-        self.mapping_file_tc = ".internal/mapping_tc.csv"
-        self.mapping_file_webpxtick_dt = ".internal/mapping_webpxtick_dt.csv"
-        column_names = ["id", "date"]
-
-        self.fileLogger.info("Loading existing mapping")
-        if(os.stat(self.mapping_file_tc).st_size == 0):
-            self.mapping_df_tc = pd.DataFrame(columns = column_names)
-        else:
-            data = pd.read_csv(self.mapping_file_tc) 
-            self.mapping_df_tc = pd.DataFrame(data, columns = column_names)
-        if(os.stat(self.mapping_file_webpxtick_dt).st_size == 0):
-            self.mapping_df_webpxtick_dt = pd.DataFrame(columns = column_names)
-        else:
-            data = pd.read_csv(self.mapping_file_webpxtick_dt) 
-            self.mapping_df_webpxtick_dt = pd.DataFrame(data, columns = column_names)
-        
-        self.fileLogger.info("OK, Existing mapping loaded")
-        self.fileLogger.info("Checking for new data")
-        for i in reversed(range(self._INTERNAL_RANGE_START,self._INTERNAL_RANGE_END)):
-            if i not in self.mapping_df_tc['id'].values:
-                df = pd.read_csv('https://links.sgx.com/1.0.0/derivatives-historical/{}/TC.txt'.format(i), sep='\t')
-                self._store_in_array(df['Business_Date'].unique(), i , "tc" )
-            # else:
-            #     self.fileLogger.info("[TC] Mapping already present for {}".format(i))
-
-        self.fileLogger.info("Saving TC mapping back to disc")
-        self.mapping_df_tc.to_csv(self.mapping_file_tc)
-        self.fileLogger.info("OK, TC mapping completed")
-
-        for i in reversed(range(self._INTERNAL_RANGE_START,self._INTERNAL_RANGE_END)):
-            if i not in self.mapping_df_webpxtick_dt['id'].values:               
-                df = pd.read_csv('https://links.sgx.com/1.0.0/derivatives-historical/{}/WEBPXTICK_DT.zip'.format(i), sep=',')
-                self._store_in_array(df['Trade_Date'].unique(), i , "webpx")
-            # else:
-            #     self.fileLogger.info("[WEBPXTICK_DT] Mapping already present for {}".format(i))
-        
-        self.fileLogger.info("Saving WEBPXTICK_DT mapping back to disc")
-        self.mapping_df_webpxtick_dt.to_csv(self.mapping_file_webpxtick_dt)
-        self.fileLogger.info("OK, WEBPXTICK_DT mapping completed")
-        self.logger.info("Program initiated, downloading starts...")
+        self.sg_holidays = holidays.CountryHoliday('SG')
+        self.sg_ex_cal = get_calendar('XSES').precomputed_holidays
         
         self.fileLogger.info("Getting MIN and MAX mapping!")
-        # self._MIN_TC = 
-        # self._MAX_TC = 
-        # self._MIN_WEBPX = 
-        # self._MAX_WEBPX = 
+
 
 sgx_scribe = main()
+sgx_scribe._mapping_func()
 sgx_scribe._config_basic_checks()
 sgx_scribe.read_config()
 
