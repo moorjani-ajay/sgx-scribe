@@ -62,12 +62,6 @@ class main:
             if tc_download_df.empty: 
                  # and historicflag is False:
                 self.fileLogger.info("[TC] Mapping not found for {} ,let's fetch it from the site [FEATURE] ".format(value))
-                # if int(value) > max(self._MAX_TC['date']):
-                #     self._INTERNAL_RANGE_START = max(self._MAX_TC['date']) 
-                #     self._INTERNAL_RANGE_END = max(self._MAX_TC['date']) + 10
-                #     self._mapping_func()
-                #     self.download_day_wise(False)
-                # print("{} {} ".format(min(self._MAX_WEBPX['date']),value))
             else:
                 for i in tc_download_df['id']:
                     if "downloads/TC/{}_TC.txt".format(i) not in files:
@@ -77,7 +71,6 @@ class main:
             
             # Logic for WEBPXTICK_DT
             if webpxtick_download_df.empty:
-                #print("{} {} {}".format(value in self.sg_holidays, value, value in self.sg_ex_cal ))
                 self.fileLogger.info("[WEBPXTICK_DT] Mapping not found for {} ,let's fetch it from the site".format(value))
             else:
                 for i in webpxtick_download_df['id']:
@@ -185,7 +178,7 @@ class main:
         self._MIN_WEBPX = self.mapping_df_webpxtick_dt[self.mapping_df_webpxtick_dt['id']==self.mapping_df_webpxtick_dt['id'].min()]
         self._MAX_WEBPX = self.mapping_df_webpxtick_dt[self.mapping_df_webpxtick_dt['id']==self.mapping_df_webpxtick_dt['id'].max()]
         
-        self._INTERNAL_RANGE_START = max(self._MAX_WEBPX['id'])
+        #self._INTERNAL_RANGE_START = max(self._MAX_WEBPX['id'])
         self._INTERNAL_RANGE_END = max(self._MAX_WEBPX['id']) + 3
 
         for i in reversed(range(self._INTERNAL_RANGE_START,self._INTERNAL_RANGE_END)):
@@ -226,7 +219,7 @@ class main:
         # Defining internal variables
         self._INTERNAL_RANGE_START = 4450
         #4238 has probs
-        self._INTERNAL_RANGE_END = 4240
+        self._INTERNAL_RANGE_END = 4663
         
         warnings.simplefilter(action='ignore', category=FutureWarning)
         logging.config.fileConfig('logging.conf')
