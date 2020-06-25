@@ -29,64 +29,67 @@ class main:
 
     def download_day_wise(self):
         self.fileLogger.info("Creating download sub-folders if does not exists")
-        webpx_path = "{}/{}".format(self.config['download_folder']['location'],"WEBPXTICK_DT")
-        p = Path(webpx_path)
+
+        p = Path("downloads/WEBPXTICK_DT")
         p.mkdir(parents=True,exist_ok=True)
-        
-        tc_path = "{}/{}".format(self.config['download_folder']['location'],"TC")
-        p = Path(tc_path)
+        p = Path("downloads/TC")
         p.mkdir(parents=True,exist_ok=True)
+
         self.fileLogger.info("Download day wise data starts")
         
         arr = self.day_wise_download_configs.split(",")
-        pool = Pool(cpu_count())    
+        files = []
+        # r=root, d=directories, f = files
+        for r, d, f in os.walk("downloads"):
+            for file in f:
+                    files.append(os.path.join(r, file))
+
+        urls = []
         for value in arr:
             self.fileLogger.info("Looking for mapping code {} ".format(value))
             tc_download_df = self.mapping_df_tc[self.mapping_df_tc['date']==int(value)]
             webpxtick_download_df = self.mapping_df_webpxtick_dt[self.mapping_df_webpxtick_dt['date']==int(value)]
-            # Downloading for TC
+            # Check if files are already available
+            # Logic for TC
             if tc_download_df.empty:
                 self.fileLogger.info("[TC] Mapping not found for {} ,let's fetch it from the site".format(value))
-                #Mapping not found, let's fetch it from the site
-                #self._mapper()
-                #self.download_day_wise()
             else:
-                # for i in tc_download_df['id']:
-                #     print(i)
-                #TODO download all ids ... need a for loop here
-                self.fileLogger.info("[TC] Mapping available for {} -> {}".format(value,tc_download_df['id'].iat[0]))
-                self.download_data(tc_download_df['id'].iat[0], value, "tc", tc_path)
-                self.logger.info("[TC] File for {} date can be found here -> {}/{}/TC_{}.txt".format(value,self.config['download_folder']['location'],"TC",tc_download_df['id'].iat[0]))
-            # Downloading for WEBPXTICK_DT
+                for i in tc_download_df['id']:
+                    if "downloads/TC/{}_TC.txt".format(i) not in files:
+                        urls.append("{}/{}/{}".format("https://links.sgx.com/1.0.0/derivatives-historical",i,"TC.txt"))
+                    else:
+                        self.fileLogger.info("[TC] File already present for {} ".format(i))
+            
+            # Logic for WEBPXTICK_DT
             if webpxtick_download_df.empty:
-                self.fileLogger.info("[WEBPXTICK_DT] Mapping not found for {}, let's fetch it from the site".format(value))
-                #Mapping not found, let's fetch it from the site
-                #self._mapper()
-                #self.download_day_wise()
+                self.fileLogger.info("[WEBPXTICK_DT] Mapping not found for {} ,let's fetch it from the site".format(value))
             else:
-                self.fileLogger.info("[WEBPXTICK_DT] Mapping available for {} -> {}".format(value,webpxtick_download_df['id'].iat[0]))
-                self.download_data(webpxtick_download_df['id'].iat[0], value, "webpx", webpx_path)
-                self.logger.info("[WEBPXTICK_DT] File for {} date can be found here -> {}/{}/WEBPXTICK_DT_{}.zip".format(value,self.config['download_folder']['location'],"WEBPXTICK_DT",tc_download_df['id'].iat[0]))
-        
+                for i in webpxtick_download_df['id']:
+                    if "downloads/WEBPXTICK_DT/{}_WEBPXTICK_DT.zip".format(i) not in files:
+                        urls.append("{}/{}/{}".format("https://links.sgx.com/1.0.0/derivatives-historical",i,"WEBPXTICK_DT.zip"))
+                    else:
+                        self.fileLogger.info("[WEBPXTICK_DT] File already present for {} ".format(i))
+
+        pool = Pool(cpu_count())
+        results = pool.map(self.download_data, list(dict.fromkeys(urls)))
+        pool.close()
+        pool.join()
         self.fileLogger.info("OK, Download day wise data ends")
     
-    def download_data(self, key, value, switch, path):
-        if switch == "tc":
-            self.logger.info("[TC] Downloading data for date {}".format(value))
-            url = "{}/{}/{}".format("https://links.sgx.com/1.0.0/derivatives-historical",key,"TC.txt")
-            name = "{}/{}_TC.txt".format(path,key)
-        elif switch == "webpx":
-            self.logger.info("[WEBPXTICK_DT] Downloading data for date {}".format(value))
-            url = "{}/{}/{}".format("https://links.sgx.com/1.0.0/derivatives-historical",key,"WEBPXTICK_DT.zip")
-            name = "{}/{}_WEBPXTICK_DT.zip".format(path,key)
-
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(name, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if chunk:  # filter out keep-alive new chunks
-                        f.write(chunk)
-    
+    def download_data(self, url):
+        try:
+            arr = url.split('/')
+            name = "downloads/{}/{}_{}".format(arr[6].split(".")[0],arr[5],arr[6])
+            self.fileLogger.info("Downloading data {}".format(url))
+            with requests.get(url, stream=True) as r:
+                r.raise_for_status()
+                with open(name, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:  # filter out keep-alive new chunks
+                            f.write(chunk)
+        except Exception as e:
+            self.logger.error(e)
+ 
     # Helper functions 
     def _store_in_array(self, arr, i, switch):
         if switch is "tc":
