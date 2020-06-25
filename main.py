@@ -225,9 +225,14 @@ class main:
         # print("There are {} CPUs on this machine ".format(cpu_count()))
         # Defining internal variables
         self._INTERNAL_RANGE_START = 4450
-        #4238 has probs
-        self._INTERNAL_RANGE_END = 4663
         
+        self._INTERNAL_RANGE_END = 4663
+
+        p = Path('logs')
+        p.mkdir(exist_ok=True)
+        p = Path('.internal')
+        p.mkdir(exist_ok=True)
+
         warnings.simplefilter(action='ignore', category=FutureWarning)
         logging.config.fileConfig('logging.conf')
         self.logger = logging.getLogger('stdoutLog')
@@ -238,10 +243,7 @@ class main:
         self.logger.info("Initialising...")
         self.fileLogger.info("Creating directories, if does not exists")
 
-        p = Path('logs')
-        p.mkdir(exist_ok=True)
-        p = Path('.internal')
-        p.mkdir(exist_ok=True)
+        
         self.fileLogger.info("OK, Creating directories done")
 
         self.fileLogger.info("Reading user input configs")
