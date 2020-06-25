@@ -3,11 +3,8 @@ import logging.config
 import configparser
 from datetime import datetime, timedelta
 import requests
-from tqdm import *
 from pathlib import Path
 import sys
-import holidays
-from trading_calendars import get_calendar
 import pandas as pd
 import os
 import warnings
@@ -224,7 +221,7 @@ class main:
     def __init__(self):
         # print("There are {} CPUs on this machine ".format(cpu_count()))
         # Defining internal variables
-        self._INTERNAL_RANGE_START = 4450
+        self._INTERNAL_RANGE_START = 3950
         
         self._INTERNAL_RANGE_END = 4663
 
@@ -250,8 +247,6 @@ class main:
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
         self.fileLogger.info("OK, Config file present")
-        self.sg_holidays = holidays.CountryHoliday('SG')
-        self.sg_ex_cal = get_calendar('XSES').precomputed_holidays
         
         self.fileLogger.info("Getting MIN and MAX mapping!")
 
