@@ -44,6 +44,10 @@ class main:
         p.mkdir(parents=True,exist_ok=True)
         p = Path("downloads/TC")
         p.mkdir(parents=True,exist_ok=True)
+        p = Path("downloads/TickData_structure")
+        p.mkdir(parents=True,exist_ok=True)
+        p = Path("downloads/TC_structure")
+        p.mkdir(parents=True,exist_ok=True)
 
         self.fileLogger.info("Download day wise data starts")
         
@@ -66,6 +70,9 @@ class main:
                 for i in tc_download_df['id']:
                     if "downloads/TC/{}_TC.txt".format(i) not in files:
                         urls.append("{}/{}/{}".format("https://links.sgx.com/1.0.0/derivatives-historical",i,"TC.txt"))
+                        urls.append("{}/{}/{}".format("https://links.sgx.com/1.0.0/derivatives-historical",i,"TC_structure.dat"))
+                        
+                        
                     else:
                         self.fileLogger.info("[TC] File already present for {} ".format(i))
             
@@ -76,6 +83,7 @@ class main:
                 for i in webpxtick_download_df['id']:
                     if "downloads/WEBPXTICK_DT/{}_WEBPXTICK_DT.zip".format(i) not in files:
                         urls.append("{}/{}/{}".format("https://links.sgx.com/1.0.0/derivatives-historical",i,"WEBPXTICK_DT.zip"))
+                        urls.append("{}/{}/{}".format("https://links.sgx.com/1.0.0/derivatives-historical",i,"TickData_structure.dat"))
                     else:
                         self.fileLogger.info("[WEBPXTICK_DT] File already present for {} ".format(i))
     
@@ -212,7 +220,6 @@ class main:
         self.fileLogger.info("OK, WEBPXTICK_DT mapping completed")
 
         self.logger.info("Program initiated, downloading starts...")
-
 
     def __init__(self):
         # print("There are {} CPUs on this machine ".format(cpu_count()))
