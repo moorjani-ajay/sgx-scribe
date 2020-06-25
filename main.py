@@ -85,7 +85,8 @@ class main:
                         self.fileLogger.info("[WEBPXTICK_DT] File already present for {} ".format(i))
     
         pool = Pool(cpu_count())
-        results = pool.map(self.download_data, list(dict.fromkeys(urls)))
+        self.urls = list(dict.fromkeys(urls))
+        results = pool.map(self.download_data, self.urls)
         pool.close()
         pool.join()
         self.fileLogger.info("OK, Downloading ended")
